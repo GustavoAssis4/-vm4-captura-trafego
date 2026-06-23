@@ -1,5 +1,3 @@
-# VM4-captura-trafego
-Módulo de captura de tráfego e geração de fluxos (VM4) desenvolvido para o trabalho final da disciplina de Laboratório de Redes.
 # Traffic Capture and Flow Generator Service
 
 ## Plataforma Distribuída de Monitoramento e Segurança de Redes
@@ -404,7 +402,7 @@ Monitoramento passivo dos broadcasts DHCP observados nas VLANs monitoradas.
 ---
 
 
-
+# Discussões e considerações finais
 
 
 
