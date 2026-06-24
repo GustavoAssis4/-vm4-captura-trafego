@@ -117,25 +117,6 @@ Esse mecanismo cria cópias dos pacotes observados e os encaminha para a VM4, pe
 A VM4 não participa ativamente da comunicação entre os hosts, seu papel é exclusivamente observar o tráfego replicado pelos switches virtuais através da técnica de port mirroring (SPAN), permitindo monitoramento passivo da rede sem alterar os pacotes originais.
 
 
-
-
-### Informações coletadas
-
-Para cada fluxo são armazenados:
-
-* Interface de captura
-* IP de origem
-* IP de destino
-* Porta de origem
-* Porta de destino
-* Protocolo
-* Quantidade de pacotes
-* Quantidade de bytes
-* Duração do fluxo
-* Taxa de transferência
-
----
-
 ## Integração com a VM1
 A VM1 atua como servidor central da plataforma.
 
