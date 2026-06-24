@@ -74,6 +74,24 @@ Durante a fase de implementação foi utilizada temporariamente a interface ens8
 
 A operação final do sistema ocorre através das interfaces ens3 e ens7, associadas à VLAN40.
 
+---
+### Informações coletadas
+
+Para cada fluxo são armazenados:
+
+* Interface de captura
+* IP de origem
+* IP de destino
+* Porta de origem
+* Porta de destino
+* Protocolo
+* Quantidade de pacotes
+* Quantidade de bytes
+* Duração do fluxo
+* Taxa de transferência
+
+---
+
 # Integração com os Open vSwitch
 
 A captura de tráfego depende diretamente da configuração dos switches virtuais da infraestrutura.
@@ -100,25 +118,6 @@ A VM4 não participa ativamente da comunicação entre os hosts, seu papel é ex
 ---
 
 
-## Fluxo de Funcionamento
-
-O processamento ocorre seguindo as etapas abaixo:
-
-```text
-Captura de Pacotes
-        ↓
-      Scapy
-        ↓
- Parsing dos Protocolos
-        ↓
- Geração de Fluxos
-        ↓
- Cálculo de Estatísticas
-        ↓
- Exportação JSON
-        ↓
- Envio para VM1
-```
 
 ### Informações coletadas
 
