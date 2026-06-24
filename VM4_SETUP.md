@@ -58,7 +58,8 @@ apt install python3 python3-pip -y
 ```
 Instalação das bibliotecas:
 ```
-pip install scapy requests
+pip install scapy 
+pip install requests
 ```
 Resolução de problemas DNS
 
