@@ -1,5 +1,5 @@
 # Traffic Capture and Flow Generator Service
-
+# Traffic Capture and Flow Generator Service
 ## Plataforma Distribuída de Monitoramento e Segurança de Redes
 
 Projeto desenvolvido para a disciplina de Laboratório de Redes.
@@ -8,7 +8,37 @@ O objetivo deste módulo é capturar tráfego de rede proveniente das VLANs moni
 
 A solução implementada corresponde ao **Aluno 4 (VM4 - Captura de Tráfego)** da arquitetura distribuída proposta para o trabalho.
 
+
+## Visão Geral --- Flow Generator
+
+O Flow Generator é o componente desenvolvido na VM4 responsável pela captura, processamento e geração de fluxos de rede do ambiente virtual da disciplina.
+
+A aplicação monitora o tráfego da VLAN40, identifica protocolos de rede, agrupa pacotes em fluxos, calcula estatísticas e envia automaticamente os dados para a API central executada na VM1.
+
+Além da integração com a VM1, os fluxos também podem ser exportados localmente em formato JSON para fins de análise e validação.
+
 ---
+## Objetivos
+
+Este módulo foi desenvolvido para:
+
+- Capturar tráfego proveniente da VLAN40;
+- Realizar parsing de pacotes IP;
+- Gerar fluxos de comunicação;
+- Produzir estatísticas de rede;
+- Integrar-se ao servidor central (VM1);
+- Disponibilizar a aplicação em container Docker.
+
+## Tecnologias Utilizadas
+
+| Tecnologia | Finalidade |
+|------------|------------|
+| Python 3.12 | Linguagem principal |
+| Scapy | Captura e parsing de pacotes |
+| Requests | Comunicação com API REST |
+| Docker | Containerização |
+| Open vSwitch | Espelhamento de tráfego |
+| JSON | Exportação de fluxos |
 
 # Arquitetura Geral
 
@@ -22,76 +52,27 @@ A comunicação entre os módulos ocorre através de VLANs dedicadas e APIs REST
 
 ---
 
-# Papel da VM4 na Arquitetura
+## Responsabilidades do Aluno 4
 
-A VM4 é responsável pela captura e análise do tráfego de rede.
+O componente desenvolvido possui as seguintes responsabilidades:
 
-Seu principal objetivo é observar o tráfego que circula pela infraestrutura sem interferir na comunicação original dos dispositivos monitorados.
+* Captura de pacotes de rede
+* Parsing dos protocolos IP, TCP, UDP e ICMP
+* Geração de fluxos de comunicação
+* Cálculo de estatísticas por fluxo
+* Exportação dos dados para JSON
+* Envio automático para a API REST da VM1
+* Containerização da aplicação utilizando Docker
 
-Para isso, os switches virtuais realizam o espelhamento (SPAN/Mirror) dos pacotes observados e enviam uma cópia para a VM4.
-
-Após a captura, os pacotes são processados localmente, convertidos em fluxos de comunicação e enviados para a VM1.
 
 O fluxo de funcionamento da VM4 pode ser resumido da seguinte forma:
-
-```text
-Switches Virtuais
-        │
-        ▼
-SPAN / Mirror
-        │
-        ▼
-     VM4
-(Captura Scapy)
-        │
-        ▼
-Parsing dos Pacotes
-        │
-        ▼
-Geração de Fluxos
-        │
-        ▼
-Exportação JSON
-        │
-        ▼
-API REST
-        │
-        ▼
-     VM1
-Servidor Central
-```
-
+![Fluxo de Dados](images/vm4_fluxo_dados.png)
 ---
+## Observações de Desenvolvimento
 
-# VLAN 40 – Rede de Monitoramento
+Durante a fase de implementação foi utilizada temporariamente a interface ens8 para acesso à Internet, instalação de dependências e testes de conectividade.
 
-A VLAN 40 foi criada especificamente para os componentes relacionados às atividades de monitoramento e observabilidade da infraestrutura.
-
-Rede:
-
-```text
-10.0.40.0/24
-```
-
-A VM4 encontra-se conectada nesta VLAN através dos endereços:
-
-```text
-10.0.40.10/16 --- Porta do SW1
-```
-```text
-10.0.40.20/16 --- Porta do SW2
-```
-A utilização de uma VLAN exclusiva para monitoramento oferece diversas vantagens:
-
-* Isolamento do tráfego de monitoramento;
-* Maior segurança da infraestrutura;
-* Separação lógica dos serviços;
-* Facilidade de gerenciamento;
-* Redução do impacto sobre as demais VLANs.
-
-Todo o tráfego processado pela VM4 é encaminhado exclusivamente para a VM1.
-
----
+A operação final do sistema ocorre através das interfaces ens3 e ens7, associadas à VLAN40.
 
 # Integração com os Open vSwitch
 
@@ -115,303 +96,157 @@ Os switches realizam o espelhamento do tráfego através da funcionalidade SPAN/
 
 Esse mecanismo cria cópias dos pacotes observados e os encaminha para a VM4, permitindo inspeção passiva sem interferir na comunicação original da rede.
 
+A VM4 não participa ativamente da comunicação entre os hosts.
+
+Seu papel é exclusivamente observar o tráfego replicado pelos switches virtuais através da técnica de port mirroring (SPAN), permitindo monitoramento passivo da rede sem alterar os pacotes originais.
 ---
 
-# Funcionalidades Implementadas
 
-## Captura de Pacotes
+## Fluxo de Funcionamento
 
-A captura é realizada através da biblioteca Scapy.
-
-O sistema monitora simultaneamente múltiplas interfaces da VM:
+O processamento ocorre seguindo as etapas abaixo:
 
 ```text
-ens3
-ens7
+Captura de Pacotes
+        ↓
+      Scapy
+        ↓
+ Parsing dos Protocolos
+        ↓
+ Geração de Fluxos
+        ↓
+ Cálculo de Estatísticas
+        ↓
+ Exportação JSON
+        ↓
+ Envio para VM1
 ```
 
-Em que a interface ens3 se refere a porta do SW1 e a interface ens7 se refere a porta do SW2, com isso, cada pacote recebido é analisado em tempo real.
+### Informações coletadas
 
----
+Para cada fluxo são armazenados:
 
-## Parsing de Pacotes
-
-Durante a captura são extraídas informações relevantes dos cabeçalhos de rede.
-
-Campos processados:
-
-* Endereço IP de origem
-* Endereço IP de destino
+* Interface de captura
+* IP de origem
+* IP de destino
 * Porta de origem
 * Porta de destino
 * Protocolo
-* Interface de captura
+* Quantidade de pacotes
 * Quantidade de bytes
-
-Exemplo:
-
-```text
-192.168.10.193:44706
-        │
-        ▼
-10.10.1.2:80
-```
-
----
-
-## Identificação de Protocolos
-
-Atualmente o sistema identifica automaticamente:
-
-| Protocolo |
-| --------- |
-| TCP       |
-| UDP       |
-| ICMP      |
-| HTTP      |
----
-
-## Identificação de Serviços
-
-Mapeamento automático de portas conhecidas:
-
-| Porta | Serviço    |
-| ----- | ---------- |
-| 22    | SSH        |
-| 53    | DNS        |
-| 67    | DHCP       |
-| 68    | DHCP       |
-| 80    | HTTP       |
-| 443   | HTTPS      |
-| 8000  | HTTP-TESTE |
-
----
-
-
-### Geração de Fluxos e *Threading*
-
-Cada comunicação é convertida em um fluxo único definido pela tupla: `(interface, src_ip, dst_ip, src_port, dst_port, protocol)`.
-
-Para otimizar o processamento, a aplicação utiliza paralelismo com a biblioteca `threading`. Enquanto o loop principal captura pacotes ininterruptamente, uma *Thread* secundária é executada a cada **10 segundos** para realizar as seguintes tarefas em segundo plano:
-1. Imprimir a tabela de fluxos no terminal.
-2. Enviar novos fluxos não registrados para a API da VM1.
-3. Atualizar o arquivo local de backup.
-Um fluxo é definido pela seguinte tupla:
-
-```text
-(interface,
-src_ip,
-dst_ip,
-src_port,
-dst_port,
-protocol)
-```
-
-Para cada fluxo são armazenadas estatísticas de utilização.
-
-Métricas calculadas:
-
-* Número de pacotes;
-* Quantidade de bytes;
-* Tempo de duração;
-* Taxa de transferência;
-* Horário de início;
-* Horário da última atualização.
-
----
-
-### Controle de Expiração (Timeout)
-
-Para evitar o crescimento infinito da tabela de fluxos e o consequente esgotamento da memória RAM da máquina virtual, foi implementada a função `remove_expired_flows()`. Ela roda periodicamente através de uma thread secundária e calcula o tempo de inatividade de cada fluxo ativo. Se um fluxo não receber pacotes por mais de **30 segundos** (limiar definido pela constante `FLOW_TIMEOUT`), ele é limpo e removido da memória do sistema de forma segura.
-
-```python
-def remove_expired_flows():
-    now = datetime.now()
-
-    for flow in list(flows.keys()):
-        idle_time = (
-            now -
-            flows[flow]["last_seen"]
-        ).total_seconds()
-
-        if idle_time > FLOW_TIMEOUT:
-            print(f"[TIMEOUT] Removendo fluxo {flow}")
-
-            flow_id = hash(flow)
-
-            if flow_id in sent_flows:
-                sent_flows.remove(flow_id)
-
-            del flows[flow]
-```
-## Exportação JSON
-
-Os dados são periodicamente consolidados no arquivo local `flows.json` e exportados via POST para a API do Servidor Central (`http://10.10.1.2/api/v1/flows/`).
-
-```text
-flows.json
-```
-
-Exemplo:
-
-```json
-{
-  "src_ip": "192.168.10.193",
-  "dst_ip": "10.10.1.2",
-  "protocol": "TCP",
-  "bytes": 830
-}
-```
+* Duração do fluxo
+* Taxa de transferência
 
 ---
 
 ## Integração com a VM1
+A VM1 atua como servidor central da plataforma.
 
-Após o processamento, os fluxos são enviados automaticamente para o servidor central.
+Os fluxos gerados pela VM4 são enviados periodicamente para a API REST, onde ficam disponíveis para armazenamento, agregação e análise por outros componentes do sistema.
 
-Endpoint utilizado:
+### Endpoint
 
 ```text
 POST /api/v1/flows/
 ```
 
-Exemplo:
+### Exemplo de fluxo gerado
 
 ```json
 {
-  "src_ip": "192.168.10.193",
-  "dst_ip": "10.10.1.2",
-  "src_port": 44706,
+  "src_ip": "10.0.40.10",
+  "dst_ip": "10.0.40.20",
+  "src_port": 52314,
   "dst_port": 80,
   "protocol": "TCP",
-  "bytes": 830,
-  "packets": 7,
-  "duration_s": 0.01
+  "bytes": 1820,
+  "packets": 14,
+  "duration_s": 1.25
 }
 ```
 
 ---
 
-# Estrutura do Projeto
+## Estrutura do Projeto
 
 ```text
 .
-├── images
-│   └── topologia.png
-│
 ├── flow_generator.py
 ├── requirements.txt
 ├── Dockerfile
+├── flows.json
 ├── README.md
-└── flows.json
+├── VM4_CONFIGURATION.md
+└── VM10_DEPLOY.md
 ```
+
+### Arquivos principais
+
+| Arquivo              | Descrição                   |
+| -------------------- | --------------------------- |
+| flow_generator.py    | Aplicação principal         |
+| requirements.txt     | Dependências Python         |
+| Dockerfile           | Construção da imagem Docker |
+| flows.json           | Exportação dos fluxos       |
+| VM4_CONFIGURATION.md | Configuração da VM4         |
+| VM10_DEPLOY.md       | Guia de implantação         |
 
 ---
 
-# Containerização
-## Containerização (Docker)
+## Dependências
 
-A aplicação foi totalmente preparada para execução em containers, isolando o ambiente de execução e garantindo que todas as dependências funcionem de maneira padronizada em qualquer infraestrutura.
+Instalação manual:
 
-### Arquivos de Configuração
+```bash
+pip install -r requirements.txt
+```
 
-**1. `requirements.txt`**
-Define as bibliotecas externas necessárias para a captura e processamento de pacotes (`scapy`) e para o envio de requisições HTTP para a API (`requests`).
+Dependências utilizadas:
+
 ```text
 scapy
 requests
 ```
-**2. `Dockerfile`**
-O container é construído utilizando uma imagem enxuta e oficial do Python (python:3.12-slim), reduzindo drasticamente o espaço em disco e otimizando a inicialização do serviço.
 
-### Construção e Execução 
-Toda vez que o arquivo flow_generator.py sofrer alguma modificação, é obrigatório reconstruir a imagem do Docker para que as atualizações sejam aplicadas no container.
-Para que a biblioteca Scapy consiga realizar o sniffing e capturar os pacotes em tempo real diretamente nas interfaces de rede reais da máquina virtual (ens3 e ens7), o container precisa ser executado obrigatoriamente com privilégios administrativos (--privileged) e mapeado diretamente na pilha de rede do host (--net host).
+---
 
-# 1. Construir a imagem Docker local
+## Execução Local
+
+```bash
+python3 flow_generator.py
+```
+
+---
+
+## Docker
+
+### Construção da imagem
+
 ```bash
 docker build -t flow-generator .
 ```
-# 2. Execução
-```bash
-docker run --net host --privileged flow-generator
-```
-# 3. Verificação do ambiente
-Para certificar-se de que a imagem foi gerada corretamente e analisar o consumo de armazenamento das camadas no Docker, o comando foi utilizado:
-```bash
-docker images
-```
 
-# Tecnologias Utilizadas
-
-* Python 3.12
-* Scapy
-* Requests
-* Docker
-* Open vSwitch
-* Linux Ubuntu
-
----
-
-# Testes Realizados
-
-## Teste ICMP
+### Execução
 
 ```bash
-ping 10.10.1.2
+docker run \
+  --net=host \
+  --privileged \
+  flow-generator
 ```
-
-Resultado:
-
-* Captura dos pacotes ICMP;
-* Geração dos fluxos;
-* Envio para VM1.
-
-## Teste HTTP
-
-```bash
-curl http://10.10.1.2
-```
-
-Resultado:
-
-* Identificação de conexões TCP;
-* Reconhecimento do serviço HTTP;
-* Exportação para a API central.
-
-## Teste DHCP
-
-Monitoramento passivo dos broadcasts DHCP observados nas VLANs monitoradas.
-
----
-
-# Requisitos Atendidos
-
-| Requisito                   | Status |
-| --------------------------- | ------ |
-| Captura de pacotes          | ✔      |
-| Parsing                     | ✔      |
-| Identificação de protocolos | ✔      |
-| Geração de fluxos           | ✔      |
-| Estatísticas                | ✔      |
-| Exportação JSON             | ✔      |
-| Integração VM1              | ✔      |
-| Dockerização                | ✔      |
-| GitHub                      | ✔      |
 
 ---
 
 
-# Discussões e considerações finais
+## Documentação Complementar
+
+A documentação detalhada do projeto encontra-se distribuída nos seguintes arquivos:
+
+* VM4_CONFIGURATION.md
+* VM10_DEPLOY.md
+* comandos.txt
 
 
+Esses documentos descrevem o processo completo de configuração da VM4, comandos utilizados e os procedimentos necessários para reprodução do ambiente em outras máquinas.
 
-
-
-
-
-
-
-
-
-
+---
