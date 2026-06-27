@@ -97,5 +97,14 @@ ou
 
 docker run --net=host --privileged flow-generator
 ```
+## Execução via Docker Hub
 
+Baixar a imagem:
+
+docker pull gustavosalmarino/flow-generator:latest
+
+Executar:
+
+docker run --net=host --privileged \
+    gustavosalmarino/flow-generator:latest
 
