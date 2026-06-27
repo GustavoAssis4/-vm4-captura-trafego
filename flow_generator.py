@@ -21,12 +21,16 @@ total_packets = 0
 total_bytes = 0
 
 
-def send_flow(flow_data):
-    """Envia os dados do fluxo para a API."""
+def send_flow(batch):
+    """Envia os dados dos fluxos em lote (batch) para a API."""
     try:
-        response = requests.post(VM1_API, json=flow_data, timeout=5)
+        response = requests.post(
+            VM1_API,
+            json=batch,
+            timeout=5
+        )
         if response.status_code in [200, 201]:
-            print(f"[VM1 OK] {flow_data['src_ip']}:{flow_data['src_port']} -> {flow_data['dst_ip']}:{flow_data['dst_port']}")
+            print(f"[VM1 OK] {len(batch)} fluxos enviados.")
         else:
             print(f"[ERRO API] Status: {response.status_code}")
     except Exception as e:
@@ -57,16 +61,16 @@ def process(packet):
     if IP not in packet:
         return
 
-    flows_changed = True
-    total_packets += 1
-    total_bytes += len(packet)
-
     src_ip = packet[IP].src
     dst_ip = packet[IP].dst
-    
+
     # Ignora tráfego da/para a própria VM da API para evitar loop infinito
     if src_ip == VM1_IP or dst_ip == VM1_IP:
         return
+
+    flows_changed = True
+    total_packets += 1
+    total_bytes += len(packet)
 
     protocol = "OTHER"
     src_port = 0
@@ -101,13 +105,12 @@ def process(packet):
     flows[flow_key]["packets"] += 1
     flows[flow_key]["bytes"] += len(packet)
     flows[flow_key]["last_seen"] = now
-    flows_changed = True
 
 
 def export_json():
     """Exporta os fluxos atuais para um arquivo JSON local."""
     data = []
-
+    
     for flow, stats in list(flows.items()):
         interface, src_ip, dst_ip, src_port, dst_port, protocol = flow
         vlan = interface.split(".")[1] if "." in interface else "N/A"
@@ -140,16 +143,16 @@ def export_json():
 def remove_expired_flows():
     """Remove fluxos que estão ociosos além do tempo limite (TIMEOUT)."""
     now = datetime.now()
-
+    
     for flow in list(flows.keys()):
         idle_time = (now - flows[flow]["last_seen"]).total_seconds()
-
+        
         if idle_time > FLOW_TIMEOUT:
             flow_id = hash(flow)
             
             if flow_id in sent_flows:
                 sent_flows.remove(flow_id)
-
+                
             print(f"[TIMEOUT] Removendo fluxo {flow}")
             del flows[flow]
 
@@ -177,6 +180,8 @@ def print_flow_table():
             print("Nenhum fluxo capturado.")
             continue
 
+        batch = []
+
         for flow, stats in list(flows.items()):
             interface, src_ip, dst_ip, src_port, dst_port, protocol = flow
             vlan = interface.split(".")[1] if "." in interface else "N/A"
@@ -197,7 +202,7 @@ def print_flow_table():
                     "packets": stats["packets"],
                     "duration_s": round(duration, 2)
                 }
-                send_flow(flow_data)
+                batch.append(flow_data)
                 sent_flows.add(flow_id)
 
             print(f"INTERFACE : {interface}")
@@ -215,6 +220,9 @@ def print_flow_table():
             print(f"ÚLTIMO    : {stats['last_seen'].strftime('%H:%M:%S')}")
             print("-" * 90)
 
+        if batch:
+            send_flow(batch)
+
         print("\nRESUMO GERAL")
         print("-" * 90)
         print(f"PACOTES TOTAIS : {total_packets}")
@@ -226,7 +234,6 @@ def print_flow_table():
 # EXECUÇÃO PRINCIPAL
 # ==========================================
 if __name__ == "__main__":
-    
     interfaces_to_monitor = [
         "ens3.10", "ens3.20", "ens3.30", "ens3.40", "ens3.50", "ens3.60",
         "ens7.10", "ens7.20", "ens7.30", "ens7.40", "ens7.50", "ens7.60",
