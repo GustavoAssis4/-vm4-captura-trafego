@@ -10,7 +10,7 @@ import os
 # CONFIGURAÇÕES GLOBAIS
 # ==========================================
 VM1_IP = "10.0.20.10"
-VM1_API = f"http://{VM1_IP}/api/v1/flows/"
+VM1_API = f"http://{VM1_IP}/api/v1/flows/batch"
 FLOW_TIMEOUT = 60  # Tempo em segundos para expirar um fluxo inativo
 
 # Variáveis de Estado
